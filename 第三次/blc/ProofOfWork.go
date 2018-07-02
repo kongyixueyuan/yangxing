@@ -12,7 +12,7 @@ type ProofOfWork struct {
 	target *big.Int
 }
 
-const targetbit = 20
+const targetbit = 16
 
 func NewProofOfWork(block *Block) *ProofOfWork {
 	newdata := big.NewInt(1)

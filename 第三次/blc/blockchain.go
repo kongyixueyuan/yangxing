@@ -27,13 +27,14 @@ func (blockchain *Blockchain) Iterator() *BlockchainIterator {
 }
 
 // 判断数据库是否存在
-func DBExists() bool {
+func dbExists() bool {
 	if _, err := os.Stat(dbName); os.IsNotExist(err) {
 		return false
 	}
 
 	return true
 }
+
 
 // 遍历输出所有区块的信息
 func (blc *Blockchain) Printchain() {
@@ -68,6 +69,8 @@ func (blc *Blockchain) Printchain() {
 	}
 
 }
+
+
 
 //// 增加区块到区块链里面
 func (blc *Blockchain) AddBlockToBlockchain(data string) {
@@ -111,7 +114,7 @@ func (blc *Blockchain) AddBlockToBlockchain(data string) {
 func CreateGenesisBlockChainWithBlock(data string) {
 
 	// 判断数据库是否存在
-	if DBExists() {
+	if dbExists() {
 		fmt.Println("创世区块已经存在.......")
 		os.Exit(1)
 	}
@@ -136,18 +139,22 @@ func CreateGenesisBlockChainWithBlock(data string) {
 
 		if b != nil {
 			// 创建创世区块
+
 			genesisBlock := CreateGenesisBlock(data)
+			seriral := genesisBlock.Serializtion()
+
 			// 将创世区块存储到表中
-			err := b.Put(genesisBlock.Hash, genesisBlock.Serializtion())
+			err := b.Put(genesisBlock.Hash, seriral)
 			if err != nil {
 				log.Panic(err)
 			}
-
+			fmt.Println(seriral)
 			// 存储最新的区块的hash
 			err = b.Put([]byte("l"), genesisBlock.Hash)
 			if err != nil {
 				log.Panic(err)
 			}
+
 		}
 
 		return nil
@@ -159,7 +166,14 @@ func CreateGenesisBlockChainWithBlock(data string) {
 // 返回Blockchain对象
 func BlockchainObject() *Blockchain {
 
+	// 判断数据库是否存在
+	if !dbExists() {
+		fmt.Println("创世区块不存在.......")
+		os.Exit(1)
+	}
+	fmt.Println("yangxing")
 	db, err := bolt.Open(dbName, 0600, nil)
+	fmt.Println("yangxing")
 	if err != nil {
 		log.Fatal(err)
 	}
