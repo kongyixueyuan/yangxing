@@ -15,6 +15,7 @@ type Transaction struct {
 }
 
 func NewCoinbaseTransaction(address string) *Transaction {
+	//创世区块没有消费，没有交易，没有输入
 	txInput := &TXInput{[]byte{},-1,"Genesis Data"}
 	txOutput := &TXOutput{100,address}//coinbase get 100
 	txCoinbase := &Transaction{[]byte{},[]*TXInput{txInput},[]*TXOutput{txOutput}}
@@ -35,11 +36,9 @@ func (tx *Transaction) HashTransaction()  {
 }
 
 func NewSimpleTransaction(from string,to string,amount int,blockchain *Blockchain,txs []*Transaction) *Transaction {
-	//$ ./bc send -from '["juncheng"]' -to '["zhangqiang"]' -amount '["2"]'
-	//	[juncheng]
-	//	[zhangqiang]
-	//	[2]
-	// 通过一个函数，返回
+	//需要组装一个最新的transaction
+	//首先需要找到from用户的可以满足value的可以花费的OUTput
+	//然后根据组装transaction的方式来组装新的transaction
 	money,spendableUTXODic := blockchain.FindSpendableUTXOS(from,amount,txs)
 	//
 	//	{hash1:[0],hash2:[2,3]}
