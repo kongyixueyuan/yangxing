@@ -180,7 +180,8 @@ func (cli *Cli) Run()  {
 			printUsage()
 			os.Exit(1)
 		}
-		cli.getBalance(*flagGetBalanceData)
+		value := cli.getBalance(*flagGetBalanceData)
+		fmt.Printf("addr = %s value == %d\n",*flagGetBalanceData,value)
 	}
 
 }

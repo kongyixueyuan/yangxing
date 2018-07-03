@@ -211,83 +211,126 @@ func BlockchainObject() *Blockchain {
 	return &Blockchain{tip,db}
 }
 
-func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO {
-
-
-
-
-	var unUTXOs []*UTXO
-
-	spentTXOutputs := make(map[string][]int)
-
-	//{hash:[0]}
-
+func getunUTXO(addr string, txs []*Transaction) []*UTXO {
+	hasspentoutputs := make(map[string][]int)
+	var utxo []*UTXO
+	//get has be spented money
 	for _,tx := range txs {
-
-		if tx.IsCoinbaseTransaction() == false {
-			for _, in := range tx.Vins {
-				//是否能够解锁
-				if in.UnLockWithAddress(address) {
-
-					key := hex.EncodeToString(in.Txhash)
-
-					spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
-				}
-
+		for _, in := range tx.Vins {
+			if in.UnLockWithAddress(addr) {
+				key := hex.EncodeToString(in.Txhash)
+				//add vout to hasspentoutputs[key]
+				hasspentoutputs[key] = append(hasspentoutputs[key],in.Vout)
 			}
 		}
 	}
 
-
+	//calculate different person money
 	for _,tx := range txs {
-
-	Work1:
-		for index,out := range tx.Vouts {
-
-			if out.UnLockScriptPubKeyWithAddress(address) {
-				fmt.Println("看看是否是俊诚...")
-				fmt.Println(address)
-
-				fmt.Println(spentTXOutputs)
-
-				if len(spentTXOutputs) == 0 {
-					utxo := &UTXO{tx.TxHash, index, out}
-					unUTXOs = append(unUTXOs, utxo)
-				} else {
-					for hash,indexArray := range spentTXOutputs {
-
-						txHashStr := hex.EncodeToString(tx.TxHash)
-
-						if hash == txHashStr {
-
-							var isUnSpentUTXO bool
-
-							for _,outIndex := range indexArray {
-
-								if index == outIndex {
-									isUnSpentUTXO = true
-									continue Work1
-								}
-
-								if isUnSpentUTXO == false {
-									utxo := &UTXO{tx.TxHash, index, out}
-									unUTXOs = append(unUTXOs, utxo)
+work:
+		for index, out := range tx.Vouts {
+			if out.UnLockScriptPubKeyWithAddress(addr) {
+				if len(hasspentoutputs) != 0{
+					for inhash,spentint := range hasspentoutputs {
+						tmphash := hex.EncodeToString(tx.TxHash)
+						if inhash == tmphash {
+							for _,value := range spentint {
+								if value == index {
+									continue work
+								} else {
+									tmp_utox := &UTXO{tx.TxHash,index,out}
+									utxo = append(utxo,tmp_utox)
 								}
 							}
 						} else {
-							utxo := &UTXO{tx.TxHash, index, out}
-							unUTXOs = append(unUTXOs, utxo)
+							tmp_utox := &UTXO{tx.TxHash,index,out}
+							utxo = append(utxo,tmp_utox)
 						}
 					}
+				} else {
+					tmp_utox := &UTXO{tx.TxHash,index,out}
+					utxo = append(utxo,tmp_utox)
 				}
-
 			}
-
 		}
-
 	}
+	return utxo
+}
 
-
+func (blockchain *Blockchain) UnUTXOs(address string,txs []*Transaction) []*UTXO {
+	//
+	//var unUTXOs []*UTXO
+	//
+	spentTXOutputs := make(map[string][]int)
+	//
+	////{hash:[0]}
+	//
+	//for _,tx := range txs {
+	//
+	//	if tx.IsCoinbaseTransaction() == false {
+	//		for _, in := range tx.Vins {
+	//			//是否能够解锁
+	//			if in.UnLockWithAddress(address) {
+	//
+	//				key := hex.EncodeToString(in.Txhash)
+	//
+	//				spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
+	//			}
+	//
+	//		}
+	//	}
+	//}
+	//
+	//
+	//for _,tx := range txs {
+	//
+	//Work1:
+	//	for index,out := range tx.Vouts {
+	//
+	//		if out.UnLockScriptPubKeyWithAddress(address) {
+	//			fmt.Println("看看是否是俊诚...")
+	//			fmt.Println(address)
+	//
+	//			fmt.Println(spentTXOutputs)
+	//
+	//			if len(spentTXOutputs) == 0 {
+	//				utxo := &UTXO{tx.TxHash, index, out}
+	//				unUTXOs = append(unUTXOs, utxo)
+	//			} else {
+	//				for hash,indexArray := range spentTXOutputs {
+	//
+	//					txHashStr := hex.EncodeToString(tx.TxHash)
+	//
+	//					if hash == txHashStr {
+	//
+	//						var isUnSpentUTXO bool
+	//
+	//						for _,outIndex := range indexArray {
+	//
+	//							if index == outIndex {
+	//								isUnSpentUTXO = true
+	//								continue Work1
+	//							}
+	//
+	//							if isUnSpentUTXO == false {
+	//								utxo := &UTXO{tx.TxHash, index, out}
+	//								unUTXOs = append(unUTXOs, utxo)
+	//							}
+	//						}
+	//					} else {
+	//						utxo := &UTXO{tx.TxHash, index, out}
+	//						unUTXOs = append(unUTXOs, utxo)
+	//					}
+	//				}
+	//			}
+	//
+	//		}
+	//
+	//	}
+	//
+	//}
+	//
+	unUTXOs := getunUTXO(address,txs)
 
 
 	blockIterator := blockchain.Iterator()
@@ -471,6 +514,8 @@ func (blc *Blockchain)getBalance(addr string) int64 {
 	utxos := blc.UnUTXOs(addr,[]*Transaction{})
 	for _,utxo := range utxos {
 		value += utxo.Output.Value
+		fmt.Println("------------------------getBalance------------------")
+		fmt.Println(value)
 	}
 	return value
 }
