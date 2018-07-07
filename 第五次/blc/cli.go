@@ -17,6 +17,7 @@ func printUsage()  {
 	fmt.Println("\t printchain -- 输出区块信息.")
 	fmt.Println("\t send -from --Addr -to --Addr -money --value")
 	fmt.Println("\t getbalance -addr --Addr")
+	fmt.Println("\t createwallet")
 }
 
 
@@ -63,7 +64,11 @@ func (cli *Cli) getBalance(addr string) int64 {
 	blockchain := BlockchainObject()
 	defer  blockchain.DB.Close()
 	return 	blockchain.getBalance(addr)
+}
 
+func (cli *Cli)createwallet() []byte {
+	wallet := NewWallet()
+	return wallet.getAddress(wallet.PublicKey)
 }
 
 func isValidArgs()  {
@@ -79,6 +84,7 @@ func (cli *Cli) Run()  {
 
 	addBlockCmd := flag.NewFlagSet("addBlockToBlockchain",flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain",flag.ExitOnError)
+	createwalletCmd := flag.NewFlagSet("printchain",flag.ExitOnError)
 	createblockChainCmd := flag.NewFlagSet("createblockchain",flag.ExitOnError)
 	sendCmd := flag.NewFlagSet("send",flag.ExitOnError)
 	getBalanceCmd := flag.NewFlagSet("getbalance",flag.ExitOnError)
@@ -125,6 +131,11 @@ func (cli *Cli) Run()  {
 			if err != nil {
 				log.Panic(err)
 			}
+		case "createwallet":
+			err := createwalletCmd.Parse(os.Args[2:])
+			if err != nil {
+				log.Panic(err)
+			}
 		default:
 			printUsage()
 			os.Exit(1)
@@ -141,10 +152,10 @@ func (cli *Cli) Run()  {
 
 	}
 
-	if printChainCmd.Parsed() {
+	if createwalletCmd.Parsed() {
 
 		//fmt.Println("输出所有区块的数据........")
-		cli.printchain()
+		fmt.Printf("print 0x%x\n",cli.createwallet())
 	}
 
 	if createblockChainCmd.Parsed() {
