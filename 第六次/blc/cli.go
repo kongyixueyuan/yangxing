@@ -53,10 +53,15 @@ func (cli *Cli) printchain()  {
 
 func (cli *Cli) createGenesisBlockchain(data string)  {
 
-	CreateGenesisBlockChainWithBlock(data)
+	blockchain := CreateGenesisBlockChainWithBlock(data)
+	defer blockchain.DB.Close()
+
+	utxoSet := &UTXOSet{blockchain}
+
+	utxoSet.ResetUTXOSet()
 }
 
-func (cli *Cli) getBalance(addr string) int64 {
+func (cli *Cli) getBalance(addr string) {
 
 	if dbExists() == false {
 		fmt.Println("数据不存在.......")
@@ -65,7 +70,12 @@ func (cli *Cli) getBalance(addr string) int64 {
 
 	blockchain := BlockchainObject()
 	defer  blockchain.DB.Close()
-	return 	blockchain.getBalance(addr)
+	//return 	blockchain.getBalance(addr)
+	utxoSet := &UTXOSet{blockchain}
+
+	amount := utxoSet.GetBalance(addr)
+
+	fmt.Printf("%s一共有%d个Token\n",addr,amount)
 }
 
 func (cli *Cli)createwallet() {
@@ -215,8 +225,8 @@ func (cli *Cli) Run()  {
 			os.Exit(1)
 		}
 
-		value := cli.getBalance(*flagGetBalanceData)
-		fmt.Printf("addr = %s value == %d\n",*flagGetBalanceData,value)
+		cli.getBalance(*flagGetBalanceData)
+		//fmt.Printf("addr = %s value == %d\n",*flagGetBalanceData,value)
 	}
 
 }
@@ -234,5 +244,9 @@ func (cli *Cli) send(from []string,to []string,amount []string)  {
 	defer blockchain.DB.Close()
 	//
 	blockchain.CreateNewBlockWithTransaction(from,to,amount)
+	utxoSet := &UTXOSet{blockchain}
+
+	//转账成功以后，需要更新一下
+	utxoSet.Update()
 
 }

@@ -127,7 +127,7 @@ func (blc *Blockchain) AddBlockToBlockchain(data string) {
 }
 
 //1. 创建带有创世区块的区块链
-func CreateGenesisBlockChainWithBlock(addr string) {
+func CreateGenesisBlockChainWithBlock(addr string) *Blockchain {
 
 	// 判断数据库是否存在
 	if dbExists() {
@@ -143,7 +143,7 @@ func CreateGenesisBlockChainWithBlock(addr string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	var genesisHash []byte
 	err = db.Update(func(tx *bolt.Tx) error {
 
 		// 创建数据库表
@@ -172,12 +172,12 @@ func CreateGenesisBlockChainWithBlock(addr string) {
 			if err != nil {
 				log.Panic(err)
 			}
-
+			genesisHash = genesisBlock.YX_Hash
 		}
 
 		return nil
 	})
-
+	return &Blockchain{genesisHash, db}
 }
 
 
