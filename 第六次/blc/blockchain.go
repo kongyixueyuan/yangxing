@@ -474,6 +474,9 @@ func (blockchain *Blockchain) CreateNewBlockWithTransaction(from []string, to []
 		fmt.Println(tx)
 	}
 
+	//奖励
+	tx := NewCoinbaseTransaction(from[0])
+	txs = append(txs,tx)
 
 	//1. 通过相关算法建立Transaction数组
 	var block *YX_Block
@@ -606,4 +609,104 @@ func (bclockchain *Blockchain) SignTransaction(tx *Transaction,privKey ecdsa.Pri
 	}
 	//log.Println(prevTXs)
 	tx.Sign(privKey, prevTXs)
+}
+
+// [string]*TXOutputs
+func (blc *Blockchain) FindUTXOMap() map[string]*TXOutputs  {
+
+	blcIterator := blc.Iterator()
+
+	// 存储已花费的UTXO的信息
+	spentableUTXOsMap := make(map[string][]*TXInput)
+
+
+	utxoMaps := make(map[string]*TXOutputs)
+
+
+	for {
+		block := blcIterator.Next()
+
+
+		for i := len(block.YX_Txs) - 1; i >= 0 ;i-- {
+
+			txOutputs := &TXOutputs{[]*UTXO{}}
+
+			tx := block.YX_Txs[i]
+
+
+			// coinbase
+			if tx.IsCoinbaseTransaction() == false {
+				for _,txInput := range tx.Vins {
+
+					txHash := hex.EncodeToString(txInput.Txhash)
+					spentableUTXOsMap[txHash] = append(spentableUTXOsMap[txHash],txInput)
+
+				}
+			}
+
+
+
+			txHash := hex.EncodeToString(tx.TxHash)
+
+		WorkOutLoop:
+			for index,out := range tx.Vouts  {
+
+				if tx.IsCoinbaseTransaction() {
+
+					fmt.Println("IsCoinbaseTransaction")
+					fmt.Println(out)
+					fmt.Println(txHash)
+				}
+
+				txInputs := spentableUTXOsMap[txHash]
+
+				if len(txInputs) > 0 {
+
+					isSpent := false
+
+					for _,in := range  txInputs {
+
+						outPublicKey := out.PubKeyHash
+						inPublicKey := in.PublicKey
+
+						if bytes.Compare(outPublicKey,Ripemd160Hash(inPublicKey)) == 0{
+							if index == in.Vout {
+								isSpent = true
+								continue WorkOutLoop
+							}
+						}
+
+					}
+
+					if isSpent == false {
+						utxo := &UTXO{tx.TxHash,index,out}
+						txOutputs.UTXOS = append(txOutputs.UTXOS,utxo)
+					}
+
+				} else {
+					utxo := &UTXO{tx.TxHash,index,out}
+					txOutputs.UTXOS = append(txOutputs.UTXOS,utxo)
+				}
+
+			}
+
+			// 设置键值对
+			utxoMaps[txHash] = txOutputs
+
+		}
+
+
+		// 找到创世区块时退出
+		var hashInt big.Int
+		hashInt.SetBytes(block.YX_PrevBlockHash)
+
+		if hashInt.Cmp(big.NewInt(0)) == 0 {
+			break;
+		}
+
+
+
+	}
+
+	return utxoMaps
 }
