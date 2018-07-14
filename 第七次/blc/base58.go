@@ -5,23 +5,23 @@ import (
 	"bytes"
 )
 
-var b58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+var YX_b58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 func Base58Encode(input []byte) []byte {
 	var result []byte
 	x := big.NewInt(0).SetBytes(input)
-	base := big.NewInt(int64(len(b58Alphabet)))
+	base := big.NewInt(int64(len(YX_b58Alphabet)))
 	mod := &big.Int{}
 	zero := big.NewInt(0)
 
 	for x.Cmp(zero) != 0{
 		x.DivMod(x,base,mod)
-		result = append(result,b58Alphabet[mod.Int64()])
+		result = append(result,YX_b58Alphabet[mod.Int64()])
 	}
 	ReverseByte(result)
 	for by := range input {
 		if by == 0 {
-			result = append([]byte{b58Alphabet[0]},result...)
+			result = append([]byte{YX_b58Alphabet[0]},result...)
 		} else {
 			break
 		}
@@ -40,7 +40,7 @@ func Base58Decode(input []byte) []byte {
 	}
 	payload := input[zeroBytes:]
 	for _, b := range payload {
-		charIndex := bytes.IndexByte(b58Alphabet, b)
+		charIndex := bytes.IndexByte(YX_b58Alphabet, b)
 		result.Mul(result, big.NewInt(58))
 		result.Add(result, big.NewInt(int64(charIndex)))
 	}

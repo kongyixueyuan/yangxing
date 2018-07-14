@@ -14,7 +14,7 @@ import (
 )
 
 // 数据库名字
-const dbName = "blockchain.db"
+const dbName = "blockchain_%s.db"
 
 // 表的名字
 const blockTableName = "blocks"
@@ -31,7 +31,7 @@ func (blockchain *Blockchain) Iterator() *BlockchainIterator {
 }
 
 // 判断数据库是否存在
-func dbExists() bool {
+func YX_dbExists(dbName string) bool {
 	if _, err := os.Stat(dbName); os.IsNotExist(err) {
 		return false
 	}
@@ -127,10 +127,12 @@ func (blc *Blockchain) AddBlockToBlockchain(data string) {
 }
 
 //1. 创建带有创世区块的区块链
-func CreateGenesisBlockChainWithBlock(addr string) *Blockchain {
+func CreateGenesisBlockChainWithBlock(addr string,nodeID string) *Blockchain {
 
+	//组装blockchain name
+	dbName := fmt.Sprintf(dbName,nodeID)
 	// 判断数据库是否存在
-	if dbExists() {
+	if YX_dbExists(dbName) {
 		fmt.Println("创世区块已经存在.......")
 		os.Exit(1)
 	}
@@ -182,10 +184,11 @@ func CreateGenesisBlockChainWithBlock(addr string) *Blockchain {
 
 
 // 返回Blockchain对象
-func BlockchainObject() *Blockchain {
-
+func BlockchainObject(nodeID string) *Blockchain {
+	//组装blockchain name
+	dbName := fmt.Sprintf(dbName,nodeID)
 	// 判断数据库是否存在
-	if !dbExists() {
+	if YX_dbExists(dbName) {
 		fmt.Println("创世区块不存在.......")
 		os.Exit(1)
 	}
@@ -457,7 +460,7 @@ func (blockchain *Blockchain) FindSpendableUTXOS(from string, amount int,txs []*
 	return value, spendableUTXO
 }
 
-func (blockchain *Blockchain) CreateNewBlockWithTransaction(from []string, to []string, amount []string) {
+func (blockchain *Blockchain) CreateNewBlockWithTransaction(from []string, to []string, amount []string,nodeID string) {
 	////debug for send
 	//fmt.Println("-------------CreateNewBlockWithTransaction--------------")
 	//fmt.Println(from)
@@ -469,7 +472,7 @@ func (blockchain *Blockchain) CreateNewBlockWithTransaction(from []string, to []
 	utxoSet := &UTXOSet{blockchain}
 	for index,address := range from {
 		value, _ := strconv.Atoi(amount[index])
-		tx := NewSimpleTransaction(address, to[index], int64(value), utxoSet,txs)
+		tx := NewSimpleTransaction(address, to[index], int64(value), utxoSet,txs,nodeID)
 		txs = append(txs, tx)
 		fmt.Println(tx)
 	}
@@ -717,4 +720,36 @@ func (blc *Blockchain) FindUTXOMap() map[string]*TXOutputs  {
 	}
 
 	return utxoMaps
+}
+
+
+//----------
+
+func (bc *Blockchain) YX_GetBestHeight() int64 {
+
+	block := bc.Iterator().Next()
+
+	return block.YX_Height
+}
+
+func (bc *Blockchain) YX_GetBlockHashes() [][]byte {
+
+	blockIterator := bc.Iterator()
+
+	var blockHashs [][]byte
+
+	for {
+		block := blockIterator.Next()
+
+		blockHashs = append(blockHashs,block.YX_Hash)
+
+		var hashInt big.Int
+		hashInt.SetBytes(block.YX_PrevBlockHash)
+
+		if hashInt.Cmp(big.NewInt(0)) == 0 {
+			break;
+		}
+	}
+
+	return blockHashs
 }

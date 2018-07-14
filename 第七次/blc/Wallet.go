@@ -8,10 +8,11 @@ import (
 	"log"
 	"crypto/sha256"
 	"golang.org/x/crypto/ripemd160"
+	"bytes"
 )
 
 const version = byte(0x00)
-
+const YX_addressChecksumLen = 4
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
 	PublicKey []byte
@@ -73,4 +74,31 @@ func newPairKey() (ecdsa.PrivateKey,[]byte) {
 	publickey := append(privatekey.X.Bytes(),privatekey.X.Bytes()...)
 	fmt.Println(publickey)
 	return *privatekey, publickey
+}
+
+//主要是用来验证地址的合法性
+func YX_IsValidForAdress(adress []byte) bool {
+
+	// 25
+	version_public_checksumBytes := Base58Decode(adress)
+
+	fmt.Println(version_public_checksumBytes)
+
+	//25
+	//4
+	//21
+	checkSumBytes := version_public_checksumBytes[len(version_public_checksumBytes) - YX_addressChecksumLen:]
+
+	version_ripemd160 := version_public_checksumBytes[:len(version_public_checksumBytes) - YX_addressChecksumLen]
+
+	//fmt.Println(len(checkSumBytes))
+	//fmt.Println(len(version_ripemd160))
+
+	checkBytes := CheckSumHash(version_ripemd160)
+
+	if bytes.Compare(checkSumBytes,checkBytes) == 0 {
+		return true
+	}
+
+	return false
 }

@@ -20,31 +20,32 @@ func printUsage()  {
 	fmt.Println("\t createwallet --createwallet")
 	fmt.Println("\t listAddress --list all the address")
 	fmt.Println("\t resetwallet")
+	fmt.Println("\tstartnode -miner ADDRESS -- 启动节点服务器，并且指定挖矿奖励的地址.")
 }
 
 
-func (cli *Cli) addBlock(data string)  {
+func (cli *Cli) addBlock(data string,nodeID string)  {
 
-	if dbExists() == false {
+	if YX_dbExists(nodeID) == false {
 		fmt.Println("数据不存在.......")
 		os.Exit(1)
 	}
 
-	blockchain := BlockchainObject()
+	blockchain := BlockchainObject(nodeID)
 
 	defer blockchain.DB.Close()
 
 	blockchain.AddBlockToBlockchain(data)
 }
 
-func (cli *Cli) printchain()  {
+func (cli *Cli) printchain(nodeID string)  {
 
-	if dbExists() == false {
+	if YX_dbExists(nodeID) == false {
 		fmt.Println("数据不存在.......")
 		os.Exit(1)
 	}
 
-	blockchain := BlockchainObject()
+	blockchain := BlockchainObject(nodeID)
 
 	defer blockchain.DB.Close()
 
@@ -52,9 +53,9 @@ func (cli *Cli) printchain()  {
 
 }
 
-func (cli *Cli) createGenesisBlockchain(data string)  {
+func (cli *Cli) createGenesisBlockchain(data string,nodeID string)  {
 
-	blockchain := CreateGenesisBlockChainWithBlock(data)
+	blockchain := CreateGenesisBlockChainWithBlock(data,nodeID)
 	defer blockchain.DB.Close()
 
 	utxoSet := &UTXOSet{blockchain}
@@ -62,9 +63,9 @@ func (cli *Cli) createGenesisBlockchain(data string)  {
 	utxoSet.ResetUTXOSet()
 }
 
-func (cli *Cli) resetwallet()  {
+func (cli *Cli) resetwallet(nodeID string)  {
 
-	blockchain := BlockchainObject()
+	blockchain := BlockchainObject(nodeID)
 	defer blockchain.DB.Close()
 
 	utxoSet := &UTXOSet{blockchain}
@@ -72,14 +73,14 @@ func (cli *Cli) resetwallet()  {
 	utxoSet.ResetUTXOSet()
 }
 
-func (cli *Cli) getBalance(addr string) {
+func (cli *Cli) getBalance(addr string,nodeID string) {
 
-	if dbExists() == false {
+	if YX_dbExists(nodeID) == false {
 		fmt.Println("数据不存在.......")
 		os.Exit(1)
 	}
 
-	blockchain := BlockchainObject()
+	blockchain := BlockchainObject(nodeID)
 	defer  blockchain.DB.Close()
 	//return 	blockchain.getBalance(addr)
 	utxoSet := &UTXOSet{blockchain}
@@ -89,14 +90,14 @@ func (cli *Cli) getBalance(addr string) {
 	fmt.Printf("%s一共有%d个Token\n",addr,amount)
 }
 
-func (cli *Cli)createwallet() {
-	wallets,_ := NewWallets()
+func (cli *Cli)YX_createwallet(nodeID string) {
+	wallets,_ := YX_NewWallets(nodeID)
 
 	wallets.CreateWallets()
 }
 
-func (cli *Cli)listAddress() {
-	wallets,_ := NewWallets()
+func (cli *Cli)YX_listAddress(nodeID string) {
+	wallets,_ := YX_NewWallets(nodeID)
 
 	for addr,_ := range wallets.Walletmap {
 		fmt.Println(addr)
@@ -110,8 +111,34 @@ func isValidArgs()  {
 	}
 }
 
-func (cli *Cli) Run()  {
+func (cli *Cli) startNode(nodeID string,minerAdd string)  {
 
+	// 启动服务器
+
+	if minerAdd == "" || YX_IsValidForAdress([]byte(minerAdd))  {
+		//  启动服务器
+		fmt.Printf("启动服务器:localhost:%s\n",nodeID)
+		YX_startServer(nodeID,minerAdd)
+
+	} else {
+
+		fmt.Println("指定的地址无效....")
+		os.Exit(0)
+	}
+
+}
+
+
+
+func (cli *Cli) Run()  {
+	//first you need to set env NODE_ID
+	nodeID := os.Getenv("NODE_ID")
+	if nodeID == "" {
+		fmt.Printf("NODE_ID env. var is not set!\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("NODE_ID:%s\n",nodeID)
 	isValidArgs()
 
 	addBlockCmd := flag.NewFlagSet("addBlockToBlockchain",flag.ExitOnError)
@@ -122,11 +149,13 @@ func (cli *Cli) Run()  {
 	getBalanceCmd := flag.NewFlagSet("getbalance",flag.ExitOnError)
 	listAddressCmd := flag.NewFlagSet("listAddress",flag.ExitOnError)
 	resetwalletCmd := flag.NewFlagSet("resetwallet",flag.ExitOnError)
+	startNodeCmd := flag.NewFlagSet("startnode",flag.ExitOnError)
 	//fmt.Println(sendCmd.Name())
 
 	flagFrom := sendCmd.String("from","","源地址")
 	flagTo := sendCmd.String("to","","目标地址")
 	flagAmount := sendCmd.String("money","","转账金额......")
+	flagMine := sendCmd.Bool("mine",false,"是否在当前节点中立即验证....")
 	//
 	//fmt.Println(flagFrom)
 	//fmt.Println(flagTo)
@@ -137,6 +166,7 @@ func (cli *Cli) Run()  {
 	flagCreateBlockChainWhisData := createblockChainCmd.String("data","","创世区块")
 
 	flagGetBalanceData := getBalanceCmd.String("addr","","想要查询的地址")
+	flagMiner := startNodeCmd.String("miner","","定义挖矿奖励的地址......")
 	//fmt.Println(*flagAddBlockData)
 
 	switch os.Args[1] {
@@ -180,6 +210,11 @@ func (cli *Cli) Run()  {
 			if err != nil {
 				log.Panic(err)
 			}
+		case "startnode":
+			err := startNodeCmd.Parse(os.Args[2:])
+			if err != nil {
+				log.Panic(err)
+			}
 		default:
 			printUsage()
 			os.Exit(1)
@@ -192,19 +227,19 @@ func (cli *Cli) Run()  {
 		}
 
 		//fmt.Println(*flagAddBlockData)
-		cli.addBlock(*flagAddBlockData)
+		cli.addBlock(*flagAddBlockData,nodeID)
 
 	}
 
 	if createwalletCmd.Parsed() {
 
 		//fmt.Println("输出所有区块的数据........")
-		cli.createwallet()
+		cli.YX_createwallet(nodeID)
 	}
 	if listAddressCmd.Parsed() {
 
 		//fmt.Println("输出所有区块的数据........")
-		cli.listAddress()
+		cli.YX_listAddress(nodeID)
 	}
 
 	if createblockChainCmd.Parsed() {
@@ -215,7 +250,7 @@ func (cli *Cli) Run()  {
 			os.Exit(1)
 		}
 
-		cli.createGenesisBlockchain(*flagCreateBlockChainWhisData)
+		cli.createGenesisBlockchain(*flagCreateBlockChainWhisData,nodeID)
 	}
 
 	if sendCmd.Parsed() {
@@ -231,7 +266,7 @@ func (cli *Cli) Run()  {
 		fmt.Println(to)
 		fmt.Println(amount)
 */
-		cli.send(from,to,amount)
+		cli.send(from,to,amount,nodeID,*flagMine)
 	}
 
 	if getBalanceCmd.Parsed() {
@@ -242,34 +277,37 @@ func (cli *Cli) Run()  {
 			os.Exit(1)
 		}
 
-		cli.getBalance(*flagGetBalanceData)
+		cli.getBalance(*flagGetBalanceData,nodeID)
 		//fmt.Printf("addr = %s value == %d\n",*flagGetBalanceData,value)
 	}
 
 	if resetwalletCmd.Parsed() {
-		cli.resetwallet()
+		cli.resetwallet(nodeID)
 		//fmt.Printf("addr = %s value == %d\n",*flagGetBalanceData,value)
 	}
+	if startNodeCmd.Parsed() {
 
+
+		cli.startNode(nodeID,*flagMiner)
+	}
 }
 
 
-func (cli *Cli) send(from []string,to []string,amount []string)  {
+func (cli *Cli) send(from []string,to []string,amount []string,nodeID string,mineNow bool)  {
 
-
-	if dbExists() == false {
-		fmt.Println("数据不存在.......")
-		os.Exit(1)
-	}
-
-	blockchain := BlockchainObject()
+	blockchain := BlockchainObject(nodeID)
 	defer blockchain.DB.Close()
-	//
-	blockchain.CreateNewBlockWithTransaction(from,to,amount)
 
-	utxoSet := &UTXOSet{blockchain}
+	if mineNow {
+		//
+		blockchain.CreateNewBlockWithTransaction(from, to, amount,nodeID)
 
-	//转账成功以后，需要更新一下
-	utxoSet.Update()
+		utxoSet := &UTXOSet{blockchain}
 
+		//转账成功以后，需要更新一下
+		utxoSet.Update()
+	} else {
+		// 把交易发送到矿工节点去进行验证
+		fmt.Println("由矿工节点处理......")
+	}
 }

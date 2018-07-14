@@ -52,13 +52,13 @@ func (tx *Transaction) HashTransaction()  {
 }
 
 
-func NewSimpleTransaction(from string,to string,amount int64,utxoSet *UTXOSet,txs []*Transaction) *Transaction {
+func NewSimpleTransaction(from string,to string,amount int64,utxoSet *UTXOSet,txs []*Transaction,nodeID string) *Transaction {
 	//需要组装一个最新的transaction
 	//首先需要找到from用户的可以满足value的可以花费的OUTput
 	//然后根据组装transaction的方式来组装新的transaction
 
 
-	wallets,_ := NewWallets()
+	wallets,_ := YX_NewWallets(nodeID)
 	wallet := wallets.Walletmap[from]
 	money,spendableUTXODic := utxoSet.FindSpendableUTXOS(from,amount,txs)
 	//

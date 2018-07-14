@@ -7,16 +7,18 @@ import (
 	"log"
 	"encoding/gob"
 	"crypto/elliptic"
+	"fmt"
 )
 
-const walletFile  = "Wallets.dat"
+const walletFile  = "Wallets_%s.dat"
 
 type Wallets struct {
 	Walletmap map[string] *Wallet
 }
 
 
-func NewWallets() (*Wallets,error) {
+func YX_NewWallets(nodeID string) (*Wallets,error) {
+	walletFile := fmt.Sprintf(walletFile,nodeID)
 	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
 		log.Printf("yangxing2\n")
 		wallets := &Wallets{}
